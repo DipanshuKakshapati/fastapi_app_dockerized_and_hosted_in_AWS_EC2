@@ -16,13 +16,20 @@ Example:
     app.include_router(another_router)
 """
 
-from fastapi import FastAPI
 import uvicorn
+from fastapi import FastAPI
 from sql_app.route import router as date_router
+from alembic.config import Config
+from alembic import command
 
 app = FastAPI()
 
-# including the router in the FastAPI app from the routes.date
+
+@app.on_event("startup")
+def startup_event():
+    alembic_cfg = Config("/app/alembic.ini")
+    command.upgrade(alembic_cfg, "head")
+
 app.include_router(date_router)
 
 if __name__ == "__main__":

@@ -46,7 +46,7 @@ class Nepse(Base):
         Market_Capitalization_Rs__Amt_in_Millions (float): Market capitalization in millions of rupees.
         Close_Date (date): The date of the transaction.
     """
-    __tablename__ = 'nepse'
+    __tablename__ = 'fastapi'
 
     Sn = sa.Column(sa.Integer, primary_key=True, nullable=False)
     Symbol = sa.Column(sa.String)

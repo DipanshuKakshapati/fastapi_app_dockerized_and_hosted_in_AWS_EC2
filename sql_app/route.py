@@ -8,7 +8,7 @@ Endpoints:
     - /env: Returns environment variables related to ODBC configuration.
     - /stocks_data: Crete a stock record, Read stock data from a specific symbol and close date, Update a stock record, and Delete a stock data from a specific symbol and date
 """
-import os
+
 import time
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -26,24 +26,6 @@ from sql_app.functions import convert_date_format, process_html_to_dataframe_dat
 from sql_app.models import Nepse
 
 router = APIRouter()
-
-@router.get("/env")
-def read_env():
-    """
-    Get and return environment variables related to ODBC configuration.
-
-    This endpoint returns the values of the 'ODBCINI', 'ODBCSYSINI', and 
-    'DYLD_LIBRARY_PATH' environment variables. These variables are important 
-    for configuring ODBC connections in the application.
-
-    Returns:
-        dict: A dictionary containing the values of the specified environment variables.
-    """
-    return {
-        "ODBCINI": os.getenv("ODBCINI"),
-        "ODBCSYSINI": os.getenv("ODBCSYSINI"),
-        "DYLD_LIBRARY_PATH": os.getenv("DYLD_LIBRARY_PATH"),
-    }
 
 # creating a stock data
 @router.post("/stocks_data")
@@ -154,9 +136,7 @@ async def update_stock(symbol: str,
 @router.get("/stocks_data_date")
 async def get_stock_by_date(
     date: str = Query(None, description="Enter the date in YYYY-MM-DD format"), 
-    db: Session = Depends(get_db),
-    page: int = Query(1, gt=0, description="Page number, starting from 1"),
-    page_size: int = Query(5, gt=0, le=100, description="Number of records per page, max 100")
+    db: Session = Depends(get_db)
 ):
     
     """
@@ -182,12 +162,9 @@ async def get_stock_by_date(
         raise HTTPException(status_code=400, detail="Invalid date format, please use YYYY-MM-DD format.") from ve
 
     try:
-        offset = (page - 1) * page_size
         data = (db.query(Nepse)
                   .filter(Nepse.Close_Date == date_obj)
                   .order_by(Nepse.Sn)  # ensuring consistent ordering for pagination
-                  .offset(offset)
-                  .limit(page_size)
                   .all())
     except SQLAlchemyError as db_err:
         raise HTTPException(status_code=500, detail=str(db_err)) from db_err
@@ -214,7 +191,7 @@ async def get_stock_by_date(
             "Close_Date": item.Close_Date
         } for item in data]
 
-        return {"data": data_dict, "page": page, "page_size": page_size, "total_records": db.query(Nepse).filter(Nepse.Close_Date == date_obj).count()}
+        return {"data": data_dict, "total_records": db.query(Nepse).filter(Nepse.Close_Date == date_obj).count()}
 
     if not data:
         try:
@@ -257,19 +234,9 @@ async def get_stock_by_date(
         
         if data_frame.empty:
             return {"message": "No data found for the specified date"}
-        
-        # pagination logic for the DataFrame
-        start_index = (page - 1) * page_size
-        end_index = start_index + page_size
-        paginated_data = data_frame.iloc[start_index:end_index]
-
-        if paginated_data.empty:
-            return {"message": "No data found on this page"}
 
         return {
-            "data": paginated_data.to_dict(orient='records'),
-            "page": page,
-            "page_size": page_size,
+            "data": data_frame.to_dict(orient='records'),
             "total_records": len(data_frame)
         }
 

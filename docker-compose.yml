@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    volumes:
+      - .:/app
+      - ./data/db:/var/lib/postgresql/data
+      - ./alembic.ini:/alembic.ini
+    ports:
+      - "8000:8000"
+    networks:
+      - my_shared_network
+    environment:
+      DATABASE_URL: "postgresql+psycopg2://${username}:${password}@postgres:${port}/${database}"
+    command: uvicorn sql_app.main:app --host 0.0.0.0 --port 8000
+    stdin_open: true  # Equivalent to 'docker run -i'
+    tty: true         # Equivalent to 'docker run -t'
+
+  postgres:
+    image: postgres
+    environment:
+      POSTGRES_USER: "${username}"
+      POSTGRES_PASSWORD: "${password}"
+      POSTGRES_DB: "${database}"
+    volumes:
+      - ./data/db:/var/lib/postgresql/data
+    ports:
+      - "${port}:5432"
+    networks:
+      - my_shared_network
+
+networks:
+  my_shared_network:
+    external: true
+
